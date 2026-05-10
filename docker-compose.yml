@@ -1,0 +1,69 @@
+name: rust-auth-service
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - msngr-network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--port", "7379"]
+    ports:
+      - "7379:7379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "7379", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - msngr-network
+
+  auth:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${HTTP_PORT}:${HTTP_PORT}"
+    env_file: .env
+    environment:
+      HTTP_PORT: ${HTTP_PORT}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      REDIS_ADDR: redis:7379
+      PROFILE_SERVICE_URL: http://profile-service:9082
+      MESSAGE_SERVICE_URL: http://message-service:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - msngr-network
+
+volumes:
+  pg_data:
+
+networks:
+  msngr-network:
+    external: true
