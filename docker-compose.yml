@@ -24,11 +24,11 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--port", "7379"]
+    command: ["redis-server", "--port", "6379"]
     ports:
-      - "7379:7379"
+      - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7379", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -36,6 +36,7 @@ services:
       - msngr-network
 
   auth:
+    container_name: auth-service-auth-1
     restart: unless-stopped
     build:
       context: .
@@ -50,9 +51,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      REDIS_ADDR: redis:7379
-      PROFILE_SERVICE_URL: http://profile-service:9082
-      MESSAGE_SERVICE_URL: http://message-service:9000
+      REDIS_ADDR: redis:6379
+      PROFILE_SERVICE_URL: http://profile-service:8082
+      MESSAGE_SERVICE_URL: http://message-service:8000
     depends_on:
       postgres:
         condition: service_healthy
